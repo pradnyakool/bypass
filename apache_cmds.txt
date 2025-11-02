@@ -1,0 +1,70 @@
+#Problem : Setup a PKI infrastructure using openssl
+
+#Step1: Set Up PKI infrasturcture in a single directory
+mkdir -p ~/pki and cd ~/pki
+
+#step2: install required packages
+sudo apt update
+sudo apt install -y openssl apache2
+
+#step3: create root CA
+openssl genpkey -algorithm RSA -out rootCA.key -pkeyopt rsa_keygen_bits:4096
+
+openssl req -x509 -new -nodes -key rootCA.key -sha256 -days 3650 
+-subj "/C=IN/ST=Maharashtra/L=Pune/O=PGDIT/OU=RootCA/CN=rtca.pgditiss.local" 
+-out rootCA.crt
+					Or
+openssl req -x509 -new -nodes -key rootCA.key -sha256
+#Step4: Create Sub CA
+openssl genpkey -algorithm RSA -out subCA.key -pkeyopt rsa_keygen_bits:4096
+
+openssl req -new -key subCA.key -out subCA.csr \
+  -subj "/C=IN/ST=Maharashtra/L=Pune/O=PGDIT/OU=SubCA/CN=sbca.pgditiss.local"
+
+openssl x509 -req -in subCA.csr -CA rootCA.crt -CAkey rootCA.key \
+  -CAcreateserial -out sub.crt -days 3650 -sha256
+
+#Step5: Create HTTPS Certificate for www.pgditiss.local
+openssl genpkey -algorithm RSA -out www.pgditiss.local.key -pkeyopt rsa_keygen_bits:2048
+
+openssl req -new -key www.pgditiss.local.key -out www.pgditiss.local.csr \
+ -subj "/C=IN/ST=Maharashtra/L=Pune/O=PGDIT/OU=Web/CN=www.pgditiss.local"
+
+openssl x509 -req -in www.pgditiss.local.csr -CA sub.crt -CAkey subCA.key \
+  -CAcreateserial -out www.pgditiss.local.crt -days 365 -sha256
+
+#Step6: Move Certificate to /etc/ssl/cdac
+sudo mkdir -p /etc/ssl/cdac
+sudo cp www.pgditiss.local.crt www.pgditiss.local.key sub.crt /etc/ssl/cdac/
+
+#Step7: Configure Apache for HTTPS
+sudo vim /etc//apache2/sites-available/www.pgditiss.local.conf
+<VirtualHost *:443>
+  ServerName www.pgditiss.local
+  DocumentRoot /var/www/html
+  SSLEngine on
+  SSLCertificateFile  /etc/ssl/cdac/www.pgditiss.local.crt
+  SSLCertificateKeyFile /etc/ssl/cdac/www.pgditiss.local.key
+  SSLCertificateChainFile /etc/ssl/cdac/sub.crt
+</VirtualHost>
+
+
+#Step7: Create Web Directory and HTML File
+sudo mkdir -p /var/www/html
+sudo vim /var/www/html/index.html
+<h1>Welcome to www.pgditiss.local!</h1>
+
+#Step8: Enable SSL Module and Site
+sudo a2enmod ssl
+sudo a2ensite www.pgditiss.local.conf
+sudo systemctl restart apache2
+
+#Step9: Configure Local DNS
+sudo vim /etc/hosts
+127.0.0.1 www.pgditiss.local
+
+#Step10: Test
+Open browser and check:www.pgditiss.local or https://www.pgditiss.local
+We might get an invalid certificate error
+Try importing the server certificate in browser store and retry
+We might still get the same error, as browser does not trust our self-signed certificate
