@@ -1,0 +1,19 @@
+apt install openssh-server
+
+sudo nano /etc/ssh/sshd_config
+
+
+PermitRootLogin no
+
+PubkeyAuthentication yes
+
+PasswordAuthentication yes
+
+sudo systemctl restart sshd
+
+ssh-keygen -t rsa
+
+ssh-copy-id usr@<ip>
+
+ssh usr@ip
+
