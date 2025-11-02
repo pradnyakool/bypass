@@ -1,0 +1,9 @@
+bash apache_setup.sh
+enter domain and ip
+aftercompletetion----
+sudo nano /etc/hosts
+add your ip and domain name
+sudo systemctl restart apache2
+go to firefox
+settings>search certificates>view certificates>import>home>pki>root>ca.cert.pem >seelct>check both boxes>ok
+reload site
